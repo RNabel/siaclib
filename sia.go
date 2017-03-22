@@ -19,6 +19,8 @@ var (
 	UPLOAD = RENTER + "/upload"
 )
 
+type FileCond func(File)bool
+
 func Delete(rem string) (string, error) {
 	return makeRequest(DELETE + "/" + rem, "POST", nil)
 }
@@ -65,25 +67,23 @@ func UploadDefault(src string, dst string) (error) {
 		return err
 	}
 
-	// Check for upload progress in regular intervals.
-	cont := true
-	for cont {
-		dat, err := ListFiles()
-		if err != nil {
-			return err
-		}
-
-		for _, val := range dat.Files {
-			if val.Siapath == dst && val.Available {
-				cont = false
-				break
-			}
-		}
-
-		time.Sleep(100 * time.Millisecond)
+	// Wait until available.
+	// 	Define the `available` condition, by filtering for the correct Siapath and Available
+	// 	flag.
+	avlbl := func(f File)bool {
+		return f.Siapath == dst && f.Available
 	}
+	waitForCondition(avlbl)
 
 	return nil
+}
+
+func WaitForRedundancy(fname string, redlevel float32) {
+	// Define a redundancy condition.
+	red := func(f File)bool {
+		return f.Siapath == fname && f.Redundancy >= redlevel
+	}
+	waitForCondition(red)
 }
 
 // HELPERS.
@@ -133,19 +133,43 @@ func makeRequest(endpoint string, requestType string, args map[string]string) (s
 	return buf.String(), nil
 }
 
+func waitForCondition(f FileCond) error {
+	// Check for upload progress in regular intervals.
+	cont := true
+	for cont {
+		dat, err := ListFiles()
+		if err != nil {
+			return err
+		}
+
+		for _, val := range dat.Files {
+			if f(val) {
+				cont = false
+				break
+			}
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return nil
+}
+
 
 // TYPE DEFINITIONS.
 // =================
 type FileList struct {
-	Files []struct {
-		Siapath        string `json:"siapath"`
-		Filesize       int `json:"filesize"`
-		Available      bool `json:"available"`
-		Renewing       bool `json:"renewing"`
-		Redundancy     float32 `json:"redundancy"`
-		Uploadprogress float32 `json:"uploadprogress"`
-		Expiration     int `json:"expiration"`
-	} `json:"files"`
+	Files []File`json:"files"`
+}
+
+type File struct {
+	Siapath        string `json:"siapath"`
+	Filesize       int `json:"filesize"`
+	Available      bool `json:"available"`
+	Renewing       bool `json:"renewing"`
+	Redundancy     float32 `json:"redundancy"`
+	Uploadprogress float32 `json:"uploadprogress"`
+	Expiration     int `json:"expiration"`
 }
 
 type DownloadList struct {
