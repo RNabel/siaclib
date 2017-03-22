@@ -20,20 +20,6 @@ var (
 	UPLOAD = RENTER + "/upload"
 )
 
-func main() {
-	fmt.Println("Getting started - yay!")
-	list2, _ := ListFiles()
-	fmt.Println("Result:")
-	fmt.Println(list2)
-
-	log.Println("Before upload")
-	err := UploadDefault("/var/tmp/10M_8", "test_4")
-	log.Println("After upload")
-
-	fmt.Println(err)
-
-}
-
 func Delete(rem string) (string, error) {
 	return makeRequest(DELETE + "/" + rem, "POST", nil)
 }
