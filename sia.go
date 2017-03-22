@@ -1,7 +1,6 @@
 package siaclib
 
 import (
-	"fmt"
 	"net/http"
 	"bytes"
 	"log"
